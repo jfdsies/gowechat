@@ -91,7 +91,8 @@ func (c *PageOAuthHandler) Handle() (err error) {
 			return
 		}
 		//用 user模块的，没用oauth模板，可以获得更多信息
-		u, err := user.NewUser(c.Oauth.Context).GetUserInfo(openID)
+		//u, err := user.NewUser(c.Oauth.Context).GetUserInfo(openID)
+		u, err := oauth.NewOauth(c.Oauth.Context).GetUserInfo(acsTkn.AccessToken, openID)
 		if err != nil {
 			return err
 		}
@@ -103,7 +104,7 @@ func (c *PageOAuthHandler) Handle() (err error) {
 		return nil
 	} else {
 		//code为空时
-		c.Redirect(c.getCallbackURL(), "snsapi_base", "base")
+		c.Redirect(c.getCallbackURL(), "snsapi_userinfo", "base")
 	}
 	return
 }

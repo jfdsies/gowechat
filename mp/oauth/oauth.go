@@ -3,6 +3,7 @@ package oauth
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/yaotian/gowechat/mp/user"
 	"net/http"
 	"net/url"
 
@@ -131,19 +132,20 @@ type UserInfo struct {
 }
 
 //GetUserInfo 如果scope为 snsapi_userinfo 则可以通过此方法获取到用户基本信息
-func (oauth *Oauth) GetUserInfo(accessToken, openID string) (result UserInfo, err error) {
+func (oauth *Oauth) GetUserInfo(accessToken, openID string) (userInfo *user.Info, err error) {
 	urlStr := fmt.Sprintf(userInfoURL, accessToken, openID)
 	var response []byte
 	response, err = util.HTTPGet(urlStr)
 	if err != nil {
 		return
 	}
-	err = json.Unmarshal(response, &result)
+	userInfo = new(user.Info)
+	err = json.Unmarshal(response, userInfo)
 	if err != nil {
 		return
 	}
-	if result.ErrCode != 0 {
-		err = fmt.Errorf("GetUserInfo error : errcode=%v , errmsg=%v", result.ErrCode, result.ErrMsg)
+	if userInfo.ErrCode != 0 {
+		err = fmt.Errorf("GetUserInfo error : errcode=%v , errmsg=%v", userInfo.ErrCode, userInfo.ErrMsg)
 		return
 	}
 	return

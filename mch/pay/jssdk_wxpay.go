@@ -21,8 +21,9 @@ type OrderInput struct {
 	IP          string
 	NotifyURL   string //异步接收微信支付结果通知的回调地址，通知url必须为外网可访问的url，不能携带参数
 	ProductID   string //trade_type=NATIVE时（即扫码支付），此参数必传
+	SceneInfo   string //上报支付的场景信息，针对H5支付有三种场景，如WAP网站应用: {"h5_info": //h5支付固定传"h5_info" {"type": "",  //场景类型 "wap_url": "",//WAP网站URL地址 "wap_name": ""  //WAP 网站名}}
 
-	tradeType string //JSAPI，NATIVE，APP
+	tradeType string //JSAPI，NATIVE，APP，MWEB
 }
 
 //SetTradeType 设置TradeType
@@ -109,6 +110,20 @@ func (c *Pay) GetNativePayQrcodePicURL(order OrderInput) (qrcodeURL string, err 
 	return
 }
 
+//GetNativePayQrcodePicURL native支付时二维码图片的url
+func (c *Pay) GetH5PayURL(order OrderInput) (mwebURL string, err error) {
+	order.setTradeType("MWEB")
+	input := c.createUnifiedOrderMap(order)
+	var result map[string]string
+	if result, err = c.UnifiedOrder(input); err == nil { //有prepay_id
+		mwebURL = result["mweb_url"]
+		if len(mwebURL) == 0 {
+			err = fmt.Errorf("h5 pay url is empty")
+		}
+	}
+	return
+}
+
 // 调用 UnifiedOrder 获得 prepayID
 func (c *Pay) getPrepayID(order OrderInput) (prepayID string, err error) {
 	input := c.createUnifiedOrderMap(order)
@@ -142,6 +157,7 @@ func (c *Pay) createUnifiedOrderMap(order OrderInput) (input map[string]string) 
 		input["product_id"] = order.ProductID //这个
 	}
 
+	input["scene_info"] = order.SceneInfo //设置trade_type=MWEB，此参数必传，用于上报支付的场景信息
 	input["openid"] = order.OpenID //设置trade_type=JSAPI，此参数必传，用户在商户appid下的唯一标识。下单前需要调用【网页授权获取用户信息】接口获取到用户的Openid
 
 	//sign
@@ -152,7 +168,7 @@ func (c *Pay) createUnifiedOrderMap(order OrderInput) (input map[string]string) 
 
 func (c *Pay) checkOrder(order OrderInput) (err error) {
 	tradeType := order.tradeType
-	if tradeType != "JSAPI" && tradeType != "APP" && tradeType != "NATIVE" {
+	if tradeType != "JSAPI" && tradeType != "APP" && tradeType != "NATIVE" && tradeType != "MWEB" {
 		return fmt.Errorf("tradeType is invalid")
 	}
 	if tradeType == "NATIVE" {
@@ -164,6 +180,12 @@ func (c *Pay) checkOrder(order OrderInput) (err error) {
 	if tradeType == "JSAPI" {
 		if order.OpenID == "" {
 			err = fmt.Errorf("OpenID can not be empty when pay mode is JSAPI")
+			return
+		}
+	}
+	if tradeType == "MWEB" {
+		if order.SceneInfo == "" {
+			err = fmt.Errorf("SceneInfo can not be empty when pay mode is MWEB")
 			return
 		}
 	}
